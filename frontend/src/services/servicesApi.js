@@ -1,4 +1,4 @@
-import api from './api';
+import api from './api.js';
 
 export const fetchServices = async (category = '') => {
   const query = category && category !== 'all' ? `?category=${encodeURIComponent(category.toUpperCase())}` : '';

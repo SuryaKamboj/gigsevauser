@@ -296,7 +296,13 @@ export default function CustomerHomePage() {
                 <VoiceSearchBar
                   searchQuery={searchQuery}
                   onSearchChange={(val) => setSearchQuery(val)}
-                  onVoiceClick={() => console.log('Voice Search Triggered')}
+                  onSearchSubmit={(val, item) => {
+                    if (item?.url) {
+                      navigate(item.url);
+                    } else if (val) {
+                      navigate(`/services?q=${encodeURIComponent(val)}`);
+                    }
+                  }}
                   placeholder="Search electrician, plumber, cleaner..."
                 />
               </div>

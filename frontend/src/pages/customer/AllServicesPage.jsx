@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronRight,
@@ -14,16 +14,41 @@ import { SERVICES_DATA } from '../../data/servicesData';
 
 export default function AllServicesPage() {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || searchParams.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  const servicesList = Object.values(SERVICES_DATA);
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('search') || '';
+    if (q !== searchTerm) {
+      setSearchTerm(q);
+    }
+  }, [searchParams]);
 
-  const filteredServices = servicesList.filter((service) => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  const servicesList = useMemo(() => Object.values(SERVICES_DATA), []);
+
+  const filteredServices = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return servicesList;
+
+    return servicesList.filter((service) => {
+      const matchName = service.name.toLowerCase().includes(term);
+      const matchDesc = (service.description || '').toLowerCase().includes(term);
+      const matchTagline = (service.tagline || '').toLowerCase().includes(term);
+      const matchTasks = (service.includedTasks || []).some((t) => t.toLowerCase().includes(term));
+      const matchCat = (service.catId || '').toLowerCase().includes(term);
+
+      // Handle common typos or single-token variations
+      if (term.includes('electr') && service.id === 'electrical') return true;
+      if (term.includes('plum') && service.id === 'plumbing') return true;
+      if ((term.includes('clean') || term.includes('cleann')) && service.id === 'cleaning') return true;
+      if ((term.includes('ac') || term.includes('appliance')) && service.id === 'appliance-repair') return true;
+      if (term.includes('carp') && service.id === 'carpentry') return true;
+
+      return matchName || matchDesc || matchTagline || matchTasks || matchCat;
+    });
+  }, [searchTerm, servicesList]);
 
   return (
     <div className="min-h-screen bg-[#F8F6F2] text-[#17233A] relative pb-20 md:pb-12 font-sans">

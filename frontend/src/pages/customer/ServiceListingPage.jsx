@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronRight,
@@ -22,6 +22,8 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1507003211169-0a1dd722
 export default function ServiceListingPage() {
   const { serviceId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchQuery = (searchParams.get('q') || searchParams.get('search') || '').trim().toLowerCase();
   const { setSelectedWorkerId } = useBooking();
 
   const isGlobalFindWorkers = !serviceId;
@@ -160,9 +162,21 @@ export default function ServiceListingPage() {
       // Availability filter
       if (selectedAvailability === 'now' && !worker.availableNow) return false;
 
+      // URL search query filter
+      if (searchQuery) {
+        const matches =
+          (worker.fullName && worker.fullName.toLowerCase().includes(searchQuery)) ||
+          (worker.profession && worker.profession.toLowerCase().includes(searchQuery)) ||
+          (worker.category && worker.category.toLowerCase().includes(searchQuery)) ||
+          (worker.serviceId && worker.serviceId.toLowerCase().includes(searchQuery)) ||
+          (worker.cooperative && worker.cooperative.toLowerCase().includes(searchQuery));
+
+        if (!matches) return false;
+      }
+
       return true;
     });
-  }, [rawWorkers, selectedCategory, selectedPrice, selectedRating, selectedDistance, selectedAvailability]);
+  }, [rawWorkers, selectedCategory, selectedPrice, selectedRating, selectedDistance, selectedAvailability, searchQuery]);
 
   const handleWorkerClick = (workerId) => {
     setSelectedWorkerId(workerId);
