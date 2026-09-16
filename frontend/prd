@@ -1,0 +1,217 @@
+# Product Requirement Document (PRD)
+
+## Project Name: KAIROVA
+**Subtitle:** Cooperative Gig Services Platform for Household & Community Services  
+**Problem Statement:** NCCT (National Council for Cooperative Training) — Smart Automation Theme  
+**Document Version:** 1.0.0  
+**Target Event:** Smart India Hackathon  
+
+---
+
+## 1. Executive Summary & Product Vision
+
+### 1.1 Problem Context
+India's gig economy represents over 7.7 million workers (projected to reach 23.5 million by 2029–30). However, the existing private aggregator model (e.g., Urban Company, Porter) operates on high commission extractions (20–35%), strict algorithm penalties, zero social security, and lack of worker ownership. 
+
+Meanwhile, India has a robust network of **Cooperative Societies** registered under NCCT and state bodies with millions of skilled local workers. These societies lack a modern digital platform to connect workers with urban & semi-urban demand at scale.
+
+### 1.2 Product Vision
+**KAIROVA** bridges this gap by creating an institutional, cooperative-first digital ecosystem. Instead of treating workers as disposable gig contractors, KAIROVA empowers local Cooperative Societies to manage, train, protect, and dispatch verified workers while giving customers a modern, trustworthy, high-speed booking experience.
+
+### 1.3 Key Value Pillars
+* **Cooperative Empowerment:** Direct ownership by local coops with transparent revenue distribution.
+* **Inter-Cooperative Pooling:** Automated order-sharing across neighboring coops during peak demand.
+* **Social Security & Welfare:** Direct integration of insurance schemes, micro-training, and trust scoring.
+* **Inclusivity & Accessibility:** Voice-based booking, multilingual UI, and offline sync for low-literacy workers.
+
+---
+
+## 2. Target User Personas & Requirements
+
+| Persona | Primary Needs | Key Pain Points Solved | Platform Interface |
+| :--- | :--- | :--- | :--- |
+| **Customer** (Homeowner / Business / Society) | Quick service booking, verified skilled workers, transparent pricing, live tracking, safety guarantee. | High aggregator fees, unreliable unverified workers, hidden charges. | **Customer Portal** (Responsive Web App) |
+| **Gig Worker** (Electrician, Plumber, Cleaner, etc.) | Regular job requests, fair payout, transparent commission, welfare/insurance, simple UI. | High commission cuts, delayed payouts, lack of insurance/social security, tech barriers. | **Worker Portal** (Accessible Web App / PWA) |
+| **Cooperative Admin** (Society Secretary / Regional Admin) | Worker verification, booking visibility, revenue insights, complaint management, fleet utilization. | Lack of digital tools, worker poaching by aggregators, manual record-keeping. | **Admin Dashboard** (Operations Web Portal) |
+
+---
+
+## 3. Core Business & Operational Rules
+
+### 3.1 Revenue Distribution Model
+Every completed job payment processed through Razorpay is automatically split according to the following audited ratio:
+
+```
+Total Service Fee = 100%
+ ├── Worker Share: 85%
+ ├── Servicing Cooperative Share: 10%
+ └── Kairova Platform Maintenance Reserve: 5%
+```
+
+### 3.2 Geographic Clustering (5km Radius Model)
+* Workers are grouped into **Cooperative Clusters** anchored around the physical/geographical location of their registered Cooperative Society.
+* Primary matching operates within a **5 km geofenced radius** around the customer's service address.
+* Geolocation matches latitude/longitude coordinates using MongoDB `$near` spherical spatial index queries.
+
+### 3.3 Inter-Cooperative Pooling Protocol
+When a customer requests a service from Cooperative A, but Cooperative A has zero available/active workers within 5km:
+1. The platform automatically triggers the **Inter-Cooperative Pooling Engine**.
+2. The engine identifies the nearest neighboring Cooperative B within an expanded 5km–12km radius with available verified workers.
+3. The booking is allocated to a worker from Cooperative B.
+4. **Cooperative Fee Split:**
+   * **Servicing Cooperative B:** Receives 90% of the 10% Coop share (i.e., 9.0% of total job value).
+   * **Referring Cooperative A:** Receives 10% of the 10% Coop share (i.e., 1.0% of total job value) as a referral / territory handshake fee.
+   * **Worker:** Retains 85%.
+   * **Platform:** Retains 5%.
+
+### 3.4 Worker Onboarding & Verification Lifecycle
+```
+[Worker Self-Registers] ➔ [Uploads Govt ID & Certs] ➔ [Status: PENDING_VERIFICATION]
+                                                               │
+                                                               ▼
+[Admin Dashboard Alert] ➔ [Admin Inspects Docs] ➔ [APPROVE] ➔ [Status: ACTIVE]
+                                                        │
+                                                        └─► [REJECT] ➔ [Status: REJECTED]
+```
+
+---
+
+## 4. Feature Specifications by Portal
+
+### 4.1 Customer Portal (Responsive Web)
+* **Authentication:** Mobile Number + Firebase OTP Verification.
+* **Service Catalog:** Dynamic grid by category (Electrical, Plumbing, Carpentry, Cleaning, Appliance Repair, Tutoring).
+* **Location Intelligence:** Auto-detect location via Google Maps Geolocation API + manual PIN/address selector.
+* **Worker Recommendation Engine:** Displays top recommended verified workers based on Trust Score, Distance, and Pricing.
+* **Voice-Based Booking:** Web Speech API integration allowing users to speak service requests in local languages (Hindi/English).
+* **Payment Integration:** Razorpay Test Mode supporting UPI, Cards, and Net Banking.
+* **Live Job Tracking:** Status progression timeline (Requested ➔ Accepted ➔ In Transit ➔ In Progress ➔ Completed).
+* **Rating & Sentiment Feedback:** Star rating (1–5) + text review triggering auto-sentiment classification.
+
+### 4.2 Worker Portal (High-Accessibility PWA)
+* **OTP Login & Language Toggle:** Simple single-tap login with Hindi/English language switcher.
+* **Availability Toggle:** Clear visual switch (ONLINE / OFFLINE) with location polling.
+* **Job Request Notification Card:** Large visual banner showing Service Type, Customer Distance, Estimated Payout (85%), and Accept/Decline countdown.
+* **Active Job Dashboard:** One-touch navigation launch (Google Maps route), OTP job start validation, job completion workflow.
+* **Earnings Ledger:** Daily/Weekly breakdown showing gross total, 85% net earnings, coop share, and direct bank payout status.
+* **Welfare & Social Security Hub:** Single-view access to active insurance coverage (PMSBY/PMJJBY), cooperative micro-loan eligibility, and skill training modules.
+* **Offline Request Sync:** Queue accepted actions in IndexedDB when network disconnects, auto-syncing upon reconnection.
+
+### 4.3 Admin Dashboard (Cooperative Operations)
+* **Real-time Map Heatmap:** Visual layer powered by Google Maps JS API displaying live worker pins, active bookings, and high-demand zones.
+* **Worker Verification Queue:** Document viewer (Aadhaar, Skill Certificate, Cooperative Member ID) with one-click Approve/Reject buttons.
+* **Inter-Cooperative Pooling Monitor:** Live feed showing pooled bookings shared between cooperatives and referral fee accounting.
+* **Demand Forecasting Panel:** Visual charts predicting upcoming 7-day demand spikes per category using synthetic historical data.
+* **Complaint & Sentiment Dashboard:** Review stream flagged by automated sentiment analysis (Negative reviews flagged for immediate admin callback).
+
+---
+
+## 5. Smart AI & Automation Specifications
+
+### 5.1 Trust Score Engine (Hybrid Rule-Based)
+Worker Trust Score \( T \in [0, 100] \) is dynamically computed upon every job completion:
+
+$$T = (R \times 40) + (C \times 25) + (V \times 15) + (S \times 10) + (P \times 10)$$
+
+Where:
+* \( R \): Normalized Average Customer Rating (\( \text{Rating} / 5 \)) [Weight: 40%]
+* \( C \): Job Completion Rate (\( \text{Completed Jobs} / \text{Accepted Jobs} \)) [Weight: 25%]
+* \( V \): Cooperative Document Verification Level (0 or 1) [Weight: 15%]
+* \( S \): Safety & Complaint Record (\( 1 - (\text{Complaints} / \text{Total Jobs}) \)) [Weight: 10%]
+* \( P \): Punctuality / On-Time Arrival Ratio [Weight: 10%]
+
+### 5.2 AI Worker Recommendation Engine
+Calculates a **Match Score** \( M_w \) for candidate workers within range:
+
+$$M_w = 0.35 \times \text{TrustScore}_w + 0.35 \times \left(1 - \frac{\text{Distance}}{5\text{km}}\right) + 0.20 \times \text{SkillMatch} + 0.10 \times \text{PastJobsCount}$$
+
+### 5.3 Demand Forecasting Engine (MVP)
+* Uses synthetic historical booking data (12 months of simulated hourly/daily booking patterns across zip codes).
+* Applies time-series forecasting (moving average + day-of-week seasonality coefficients) via a lightweight Node.js/Python endpoint to generate upcoming 7-day category demand metrics.
+
+### 5.4 Sentiment Analysis Engine (Lightweight NLP)
+* Processes customer review text using keyword lexicon & sentiment scoring (AFINN / VADER algorithm equivalent).
+* Categorizes reviews into `POSITIVE`, `NEUTRAL`, `NEGATIVE`.
+* Negative reviews automatically lower worker trust score slightly and raise an alert on the Admin Dashboard for dispute resolution.
+
+---
+
+## 6. Technology Stack Architecture
+
+```
+ Kairova Responsive Web Client (React 18 + Vite + Tailwind CSS / Vanilla CSS)
+ ├── Customer Portal  │  Worker Portal (PWA)  │  Admin Operations Dashboard
+ └── Real-time State: React Context / Custom Hooks + Speech API + Google Maps API
+                                       │ REST / WebSocket / FCM
+                                       ▼
+ Express.js / Node.js API Gateway & Business Logic Server
+ ├── Firebase Admin Auth Middleware (OTP verification)
+ ├── Revenue Split & Pooling Controller (85/10/5 & 90/10 coop split logic)
+ ├── Razorpay Payment Gateway Webhooks
+ └── AI Module (Trust Score Engine, Demand Forecast, Sentiment Classifier)
+                                       │
+                   ┌───────────────────┴───────────────────┐
+                   ▼                                       ▼
+ MongoDB Database (Atlas / Local)             Firebase Cloud Messaging (FCM)
+ ├── Users (Customer, Worker, Admin)           └── Real-time Job Notifications
+ ├── CooperativeSocieties (GeoJSON 5km)            Push alerts to Worker/Customer
+ ├── Bookings & InterCoopPool Logs
+ └── ServiceCategories & WelfareSchemes
+```
+
+---
+
+## 7. Demo Data Strategy for Smart India Hackathon
+
+To ensure a seamless, convincing demo during live judging:
+
+1. **Pre-configured Cooperatives:**
+   * *Cooperative A:* South Delhi Artisan Cooperative Society (Lat: 28.5400, Lng: 77.2400)
+   * *Cooperative B:* East Delhi Craftsmen Cooperative Society (Lat: 28.6200, Lng: 77.2800)
+2. **Pre-loaded Verified Workers:**
+   * Electrician (Trust Score: 94, Coop A, Active)
+   * Plumber (Trust Score: 88, Coop A, Active)
+   * Carpenter (Trust Score: 91, Coop B, Active - ready for pooling demo)
+3. **Simulated Inter-Cooperative Pooling Scenario:**
+   * Customer books Carpentry in Coop A's zone. Coop A has no available carpenter. System automatically pools order to Coop B's Carpenter, showing real-time revenue split breakdown (85% Worker, 9% Servicing Coop B, 1% Referring Coop A, 5% Kairova).
+
+---
+
+## 8. Development Roadmap & Feature Categorization
+
+```
+               HACKATHON MVP (Phase 1)
+┌──────────────────────────────────────────────────┐
+│ • OTP Auth (Firebase)                            │
+│ • 3 Portals (Customer, Worker, Admin)            │
+│ • 5km Geofenced Matching & Service Booking       │
+│ • 85/10/5 Revenue & Inter-Coop Pooling Engine    │
+│ • Trust Score Calculation                        │
+│ • Razorpay Test Mode & Admin Heatmap Map        │
+└──────────────────────────────────────────────────┘
+                         │
+                         ▼
+             ADVANCED FEATURES (Phase 2)
+┌──────────────────────────────────────────────────┐
+│ • Voice-Based Requesting (Speech-to-Text)        │
+│ • Automated Sentiment Analysis on Reviews        │
+│ • Demand Forecasting Visual Analytics Charts     │
+│ • Welfare Hub & Scheme Application Portal        │
+└──────────────────────────────────────────────────┘
+                         │
+                         ▼
+              FUTURE VISION (Post-SIH)
+┌──────────────────────────────────────────────────┐
+│ • Native Mobile Apps (iOS/Android React Native) │
+│ • Web3 / Blockchain Cooperative Dividend Audit   │
+│ • Voice AI Bot in regional dialects (Bhojpuri)   │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. Next Technical Action Items
+
+1. **Database Schema Design Document:** Define exact Mongoose models for `User`, `WorkerProfile`, `Cooperative`, `Booking`, `TrustScoreLog`, and `PoolingLog`.
+2. **REST API Endpoint Specifications:** Map controllers for Auth, Service Matching, Pooling Logic, Razorpay Webhook, and Admin Analytics.
+3. **App Architecture Blueprint:** Set up frontend directory structure for Customer, Worker, and Admin interfaces.
