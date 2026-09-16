@@ -61,21 +61,28 @@ export default function GoogleLiveMap({
         const workerLatLng = new google.maps.LatLng(workerLat, workerLng);
         const customerLatLng = new google.maps.LatLng(customerLat, customerLng);
 
-        const map = new google.maps.Map(mapContainerRef.current, {
+        const mapOptions = {
           center: customerLatLng,
           zoom: 14,
-          mapId: 'DEMO_MAP_ID',
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: true,
           gestureHandling: 'cooperative',
-          styles: [
+        };
+
+        if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+          // When mapId is present, Google Maps forbids the 'styles' property
+          mapOptions.mapId = 'DEMO_MAP_ID';
+        } else {
+          mapOptions.styles = [
             { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
             { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'on' }] }
-          ]
-        });
+          ];
+        }
+
+        const map = new google.maps.Map(mapContainerRef.current, mapOptions);
 
         // 1 & 2. Modern AdvancedMarkerElement when available (prevents deprecation warnings)
         if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
@@ -225,11 +232,15 @@ export default function GoogleLiveMap({
         </a>
       </div>
 
-      {/* Main Map Canvas or Interactive Fallback */}
-      {isGoogleMapsConfigured() && !mapError ? (
-        <div ref={mapContainerRef} className="w-full h-full" />
-      ) : (
-        // High quality fallback with interactive OpenStreetMap view & dual pin layout
+      {/* Main Google Maps Canvas - Kept always mounted in DOM to prevent getRootNode() errors during async tear down */}
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        style={{ display: isGoogleMapsConfigured() && !mapError ? 'block' : 'none' }}
+      />
+
+      {/* High quality fallback with interactive OpenStreetMap view & dual pin layout */}
+      {(!isGoogleMapsConfigured() || mapError) && (
         <div className="relative w-full h-full bg-[#E8E5DD] flex items-center justify-center overflow-hidden">
           <iframe
             title="Live Service Tracking Map"
