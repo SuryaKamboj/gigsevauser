@@ -41,14 +41,22 @@ export default function GoogleLiveMap({
   useEffect(() => {
     let isMounted = true;
 
-    if (!isGoogleMapsConfigured()) {
+    if (!isGoogleMapsConfigured() || window.__googleMapsAuthFailed) {
       setMapError(true);
       return;
     }
 
+    window.__onGoogleMapsAuthFailed = () => {
+      if (isMounted) setMapError(true);
+    };
+
     loadGoogleMaps()
       .then((google) => {
         if (!isMounted || !mapContainerRef.current) return;
+        if (window.__googleMapsAuthFailed) {
+          setMapError(true);
+          return;
+        }
 
         const workerLatLng = new google.maps.LatLng(workerLat, workerLng);
         const customerLatLng = new google.maps.LatLng(customerLat, customerLng);
@@ -56,6 +64,7 @@ export default function GoogleLiveMap({
         const map = new google.maps.Map(mapContainerRef.current, {
           center: customerLatLng,
           zoom: 14,
+          mapId: 'DEMO_MAP_ID',
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: false,
@@ -68,82 +77,118 @@ export default function GoogleLiveMap({
           ]
         });
 
-        // 1. Worker Marker (Artisan Blue/Burgundy pin)
-        const workerMarker = new google.maps.Marker({
-          position: workerLatLng,
-          map,
-          title: `${workerLocation?.name || 'Worker'} (${status})`,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: '#A66666',
-            fillOpacity: 1,
-            strokeWeight: 3,
-            strokeColor: '#FFFFFF'
-          },
-          animation: google.maps.Animation.DROP
-        });
+        // 1 & 2. Modern AdvancedMarkerElement when available (prevents deprecation warnings)
+        if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+          const workerPin = document.createElement('div');
+          workerPin.className = 'w-6 h-6 rounded-full bg-[#A66666] border-2 border-white shadow-md flex items-center justify-center text-[11px] text-white font-bold cursor-pointer';
+          workerPin.innerText = 'W';
 
-        // 2. Customer Destination Marker
-        const customerMarker = new google.maps.Marker({
-          position: customerLatLng,
-          map,
-          title: customerLocation?.address || 'Your Address',
-          icon: {
-            path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-            scale: 6,
-            fillColor: '#17233A',
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: '#FFFFFF'
-          }
-        });
+          new google.maps.marker.AdvancedMarkerElement({
+            position: workerLatLng,
+            map,
+            title: `${workerLocation?.name || 'Worker'} (${status})`,
+            content: workerPin
+          });
 
-        // 3. Directions & Routing
-        const directionsService = new google.maps.DirectionsService();
-        const directionsRenderer = new google.maps.DirectionsRenderer({
-          map,
-          suppressMarkers: true, // Keep our custom markers
-          polylineOptions: {
-            strokeColor: '#A66666',
-            strokeWeight: 5,
-            strokeOpacity: 0.85
-          }
-        });
+          const customerPin = document.createElement('div');
+          customerPin.className = 'w-6 h-6 rounded-full bg-[#17233A] border-2 border-white shadow-md flex items-center justify-center text-[11px] text-white font-bold cursor-pointer';
+          customerPin.innerText = 'C';
 
-        directionsService.route(
-          {
-            origin: workerLatLng,
-            destination: customerLatLng,
-            travelMode: google.maps.TravelMode.DRIVING
-          },
-          (result, status) => {
-            if (status === google.maps.DirectionsStatus.OK && result) {
-              directionsRenderer.setDirections(result);
-              const leg = result.routes[0]?.legs[0];
-              if (leg && isMounted) {
-                setRouteDistance(leg.distance?.text || `${straightDistance} km`);
-                setRouteDuration(leg.duration?.text || '12 mins');
-              }
-            } else {
-              // Fallback to straight line polyline if road routing unavailable
-              const path = [workerLatLng, customerLatLng];
-              new google.maps.Polyline({
-                path,
-                geodesic: true,
-                strokeColor: '#A66666',
-                strokeOpacity: 0.8,
-                strokeWeight: 4,
-                map
-              });
-
-              const bounds = new google.maps.LatLngBounds();
-              bounds.extend(workerLatLng);
-              bounds.extend(customerLatLng);
-              map.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
+          new google.maps.marker.AdvancedMarkerElement({
+            position: customerLatLng,
+            map,
+            title: customerLocation?.address || 'Your Address',
+            content: customerPin
+          });
+        } else {
+          // Fallback to legacy Marker
+          new google.maps.Marker({
+            position: workerLatLng,
+            map,
+            title: `${workerLocation?.name || 'Worker'} (${status})`,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: '#A66666',
+              fillOpacity: 1,
+              strokeWeight: 3,
+              strokeColor: '#FFFFFF'
             }
-          }
-        );
+          });
+
+          new google.maps.Marker({
+            position: customerLatLng,
+            map,
+            title: customerLocation?.address || 'Your Address',
+            icon: {
+              path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+              scale: 6,
+              fillColor: '#17233A',
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: '#FFFFFF'
+            }
+          });
+        }
+
+        // 3. Directions & Routing (Safe execution)
+        try {
+          const directionsService = new google.maps.DirectionsService();
+          const directionsRenderer = new google.maps.DirectionsRenderer({
+            map,
+            suppressMarkers: true, // Keep our custom markers
+            polylineOptions: {
+              strokeColor: '#A66666',
+              strokeWeight: 5,
+              strokeOpacity: 0.85
+            }
+          });
+
+          directionsService.route(
+            {
+              origin: workerLatLng,
+              destination: customerLatLng,
+              travelMode: google.maps.TravelMode.DRIVING
+            },
+            (result, routeStatus) => {
+              if (routeStatus === google.maps.DirectionsStatus.OK && result) {
+                directionsRenderer.setDirections(result);
+                const leg = result.routes[0]?.legs[0];
+                if (leg && isMounted) {
+                  setRouteDistance(leg.distance?.text || `${straightDistance} km`);
+                  setRouteDuration(leg.duration?.text || '12 mins');
+                }
+              } else {
+                // Fallback to straight line polyline if road routing unavailable
+                const path = [workerLatLng, customerLatLng];
+                new google.maps.Polyline({
+                  path,
+                  geodesic: true,
+                  strokeColor: '#A66666',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 4,
+                  map
+                });
+
+                const bounds = new google.maps.LatLngBounds();
+                bounds.extend(workerLatLng);
+                bounds.extend(customerLatLng);
+                map.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
+              }
+            }
+          );
+        } catch (routeErr) {
+          console.warn('[GoogleLiveMap] Routing fallback notice:', routeErr);
+          const path = [workerLatLng, customerLatLng];
+          new google.maps.Polyline({
+            path,
+            geodesic: true,
+            strokeColor: '#A66666',
+            strokeOpacity: 0.8,
+            strokeWeight: 4,
+            map
+          });
+        }
       })
       .catch((err) => {
         console.warn('[GoogleLiveMap] Google Maps load notice:', err.message);
@@ -152,6 +197,9 @@ export default function GoogleLiveMap({
 
     return () => {
       isMounted = false;
+      if (window.__onGoogleMapsAuthFailed) {
+        delete window.__onGoogleMapsAuthFailed;
+      }
     };
   }, [workerLat, workerLng, customerLat, customerLng, status]);
 
