@@ -114,21 +114,10 @@ export const BookingProvider = ({ children }) => {
     return newBooking;
   };
 
-  const completeBooking = () => {
-    if (activeBooking && activeBooking.status !== 'Completed') {
-      const completed = {
-        ...activeBooking,
-        status: 'Completed',
-        completedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        amountPaid: (activeBooking.service?.basePrice || 499) + 49,
-        ratingGiven: 5.0,
-        paymentMethod: 'UPI (Escrow Protected)',
-        timeSlot: 'Immediate Dispatch'
-      };
-      setPreviousBookings((prev) => [completed, ...prev]);
-      setActiveBooking(null);
-    }
-  };
+  // completeBooking() intentionally removed.
+  // Status is exclusively driven by MongoDB via reloadBookings() polling.
+  // When the worker marks IN_PROGRESS → COMPLETED on the backend,
+  // the next reloadBookings() poll will move the booking from activeBooking → previousBookings automatically.
 
   const [complaints, setComplaints] = useState([]);
 
@@ -176,7 +165,6 @@ export const BookingProvider = ({ children }) => {
         setComplaints,
         addComplaint,
         createNewBooking,
-        completeBooking,
         reloadBookings
       }}
     >

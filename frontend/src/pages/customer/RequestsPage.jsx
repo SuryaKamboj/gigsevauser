@@ -350,7 +350,7 @@ export default function RequestsPage() {
                 {/* FAST-ENTRY ACTION BUTTONS FOR ACTIVE REQUEST CARD: [ Track ] [ Chat ] [ Call ] [ Raise Complaint ] */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-[#E8E2D8]">
                   <Link
-                    to={`/tracking/${activeBooking.bookingId || 'BK-1001'}`}
+                    to={activeBooking._id ? `/tracking/${activeBooking._id}` : '/requests'}
                     className="py-3 px-3 rounded-xl bg-[#A66666] hover:bg-[#8F5555] text-white font-bold font-display text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer text-center"
                   >
                     <FontAwesomeIcon icon={faArrowRight} className="w-3.5 h-3.5" />
