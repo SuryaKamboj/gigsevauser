@@ -12,18 +12,37 @@ import {
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import { useBooking } from '../../context/BookingContext';
+import { fetchBookingById } from '../../services/bookingApi';
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400';
 
 export default function ReviewPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
-  const { activeBooking } = useBooking();
+  const { activeBooking, previousBookings } = useBooking();
 
   const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState('');
   const [photo, setPhoto] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  const [fetchedBooking, setFetchedBooking] = useState(null);
 
-  const worker = activeBooking.worker;
+  useEffect(() => {
+    if (bookingId && !activeBooking?.worker) {
+      fetchBookingById(bookingId)
+        .then((res) => {
+          const b = res?.data || res?.booking || res;
+          if (b) setFetchedBooking(b);
+        })
+        .catch(() => {});
+    }
+  }, [bookingId, activeBooking]);
+
+  const worker = activeBooking?.worker || fetchedBooking?.workerId || previousBookings?.[0]?.worker || null;
+  const workerName = worker?.fullName || 'Assigned Artisan';
+  const workerAvatar = worker?.avatarUrl || worker?.selfieUrl || DEFAULT_AVATAR;
+  const workerRole = worker?.profession || worker?.primaryServiceCategory || 'Cooperative Specialist';
+  const workerCoop = worker?.cooperative || worker?.societyId?.name || 'Worker Cooperative';
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
@@ -78,10 +97,10 @@ export default function ReviewPage() {
             
             {/* Worker summary header */}
             <div className="flex items-center gap-4 bg-[#F8F6F2] p-4 rounded-2xl border border-[#E8E2D8]">
-              <img src={worker.avatarUrl} alt={worker.fullName} className="w-14 h-14 rounded-2xl object-cover" />
+              <img src={workerAvatar} alt={workerName} className="w-14 h-14 rounded-2xl object-cover border border-[#E8E2D8]" />
               <div>
-                <h3 className="text-base font-bold font-display text-[#17233A]">{worker.fullName}</h3>
-                <p className="text-xs text-[#6B7280]">{worker.profession} • {worker.cooperative}</p>
+                <h3 className="text-base font-bold font-display text-[#17233A]">{workerName}</h3>
+                <p className="text-xs text-[#6B7280]">{workerRole} • {workerCoop}</p>
               </div>
             </div>
 

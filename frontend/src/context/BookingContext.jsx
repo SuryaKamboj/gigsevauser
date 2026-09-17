@@ -23,7 +23,7 @@ export const BookingProvider = ({ children }) => {
     try {
       const list = await apiFetchBookings();
       if (Array.isArray(list)) {
-        const active = list.find(b => ['PENDING', 'REQUESTED', 'ALLOCATED', 'ACCEPTED', 'IN_TRANSIT', 'ARRIVED', 'IN_PROGRESS'].includes(b.status));
+        const active = list.find(b => ['PENDING', 'REQUESTED', 'ALLOCATED', 'ACCEPTED', 'IN_TRANSIT', 'ARRIVED', 'IN_PROGRESS', 'COMPLETION_PENDING'].includes(b.status));
         const prev = list.filter(b => ['COMPLETED', 'CANCELLED'].includes(b.status));
 
         if (active) {
