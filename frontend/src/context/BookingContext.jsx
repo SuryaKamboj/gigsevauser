@@ -22,7 +22,7 @@ export const BookingProvider = ({ children }) => {
   const reloadBookings = async () => {
     try {
       const list = await apiFetchBookings();
-      if (Array.isArray(list) && list.length > 0) {
+      if (Array.isArray(list)) {
         const active = list.find(b => ['REQUESTED', 'ALLOCATED', 'ACCEPTED', 'IN_TRANSIT', 'ARRIVED', 'IN_PROGRESS'].includes(b.status));
         const prev = list.filter(b => ['COMPLETED', 'CANCELLED'].includes(b.status));
 
@@ -39,22 +39,22 @@ export const BookingProvider = ({ children }) => {
             bookingDate: new Date(active.createdAt).toLocaleDateString(),
             details: bookingDetails
           });
+        } else {
+          setActiveBooking(null);
         }
 
-        if (prev.length > 0) {
-          setPreviousBookings(prev.map(p => ({
-            _id: p._id,
-            bookingId: p.bookingCode || p._id,
-            bookingCode: p.bookingCode || p._id,
-            status: p.status,
-            service: p.serviceId || SERVICES_DATA['electrical'],
-            worker: p.workerId || WORKERS_DATA[0],
-            completedDate: new Date(p.updatedAt || p.createdAt).toLocaleDateString(),
-            amountPaid: p.pricing?.totalAmount || 499,
-            ratingGiven: 5.0,
-            paymentMethod: 'UPI (Escrow Protected)'
-          })));
-        }
+        setPreviousBookings(prev.map(p => ({
+          _id: p._id,
+          bookingId: p.bookingCode || p._id,
+          bookingCode: p.bookingCode || p._id,
+          status: p.status,
+          service: p.serviceId || SERVICES_DATA['electrical'],
+          worker: p.workerId || WORKERS_DATA[0],
+          completedDate: new Date(p.updatedAt || p.createdAt).toLocaleDateString(),
+          amountPaid: p.pricing?.totalAmount || 499,
+          ratingGiven: 5.0,
+          paymentMethod: 'UPI (Escrow Protected)'
+        })));
       }
     } catch (e) {
       // quiet notice
