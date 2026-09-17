@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -86,8 +86,8 @@ export default function LiveTrackingPage() {
 
   // ── Derived display values ──────────────────────────────────────────────
   const rawStatus      = (booking?.status || 'PENDING').toUpperCase();
-  const currentStepIdx = STEP_IDX[rawStatus] ?? 0;
-  const currentLabel   = STATUS_STEPS[currentStepIdx]?.label ?? 'Pending';
+  const currentStepIdx = rawStatus === 'COMPLETION_PENDING' ? 4 : (STEP_IDX[rawStatus] ?? 0);
+  const currentLabel   = rawStatus === 'COMPLETION_PENDING' ? 'Completion Verification' : (STATUS_STEPS[currentStepIdx]?.label ?? 'Pending');
 
   const worker     = booking?.workerId || null;
   const service    = booking?.serviceId || null;
@@ -101,6 +101,8 @@ export default function LiveTrackingPage() {
 
   // startOtp is returned by GET /bookings/:id ONLY when status === 'ARRIVED' and caller is the booking owner
   const startOtp = booking?.startOtp || null;
+  // completionPin is returned by GET /bookings/:id ONLY when status === 'COMPLETION_PENDING' and caller is the booking owner
+  const completionPin = booking?.completionPin || booking?.security?.completionPin || null;
 
   const workerLocation = tracking?.workerLocation ?? {
     latitude:  worker?.currentLocation?.coordinates?.[1] ?? 28.5300,
@@ -224,20 +226,51 @@ export default function LiveTrackingPage() {
             </div>
           </div>
 
-          {/* OTP PIN — revealed by backend ONLY when status === ARRIVED */}
-          <div className="mt-4 pt-4 border-t border-[#E8E2D8] flex items-center justify-between flex-wrap gap-3 bg-[#A66666]/5 rounded-2xl p-4 border border-[#A66666]/20">
-            <div className="max-w-md">
-              <div className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">Service Start Verification PIN</div>
-              <div className="text-xs text-[#17233A] mt-0.5">
-                {startOtp
-                  ? `Share this 4-digit code with ${workerName} to begin work.`
-                  : 'Your 4-digit PIN will be revealed here once the worker arrives at your doorstep.'}
+          {/* PIN CARD — dynamically shows Completion PIN or Start OTP based on real booking lifecycle */}
+          {rawStatus === 'COMPLETION_PENDING' || completionPin ? (
+            <div className="mt-4 pt-4 border-t border-[#E8E2D8] flex items-center justify-between flex-wrap gap-4 bg-emerald-50/90 rounded-2xl p-5 border-2 border-emerald-500 shadow-sm">
+              <div className="max-w-md">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                  Job Completion Verification PIN
+                </div>
+                <div className="text-xs sm:text-sm text-emerald-950 font-medium mt-1">
+                  {completionPin ? (
+                    <>Worker has completed the work! Share this <strong>4-digit PIN</strong> with <span className="font-bold text-emerald-900">{workerName}</span> to confirm completion.</>
+                  ) : (
+                    <>Worker requested job completion. Generating your 4-digit verification PIN…</>
+                  )}
+                </div>
+              </div>
+              <div className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-emerald-700 bg-white px-5 py-2 rounded-xl border-2 border-emerald-400 shadow-sm">
+                {completionPin ?? '••••'}
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black font-mono tracking-widest text-[#A66666] bg-white px-4 py-1.5 rounded-xl border border-[#A66666]/30 shadow-xs">
-              {startOtp ?? '••••'}
+          ) : rawStatus === 'COMPLETED' ? (
+            <div className="mt-4 pt-4 border-t border-[#E8E2D8] flex items-center gap-3 bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 text-emerald-900">
+              <FontAwesomeIcon icon={faCircleCheck} className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wider">Service Successfully Completed</div>
+                <div className="text-xs text-emerald-800 mt-0.5">Your booking has been verified and marked as complete. Thank you for choosing cooperative service!</div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 pt-4 border-t border-[#E8E2D8] flex items-center justify-between flex-wrap gap-3 bg-[#A66666]/5 rounded-2xl p-4 border border-[#A66666]/20">
+              <div className="max-w-md">
+                <div className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">Service Start Verification PIN</div>
+                <div className="text-xs text-[#17233A] mt-0.5">
+                  {startOtp
+                    ? `Share this 4-digit code with ${workerName} to begin work.`
+                    : rawStatus === 'IN_PROGRESS'
+                    ? 'Work is currently in progress. Completion PIN will appear here when worker finishes.'
+                    : 'Your 4-digit PIN will be revealed here once the worker arrives at your doorstep.'}
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono tracking-widest text-[#A66666] bg-white px-4 py-1.5 rounded-xl border border-[#A66666]/30 shadow-xs">
+                {startOtp ?? '••••'}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* LIVE MAP */}
