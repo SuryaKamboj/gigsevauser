@@ -17,8 +17,7 @@ import {
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import CompactTrustStrip from '../../components/customer/CompactTrustStrip';
-import { SERVICES_DATA } from '../../data/servicesData';
-import { getWorkersByService, WORKERS_DATA } from '../../data/workersData';
+import { fetchWorkers } from '../../services/workersApi';
 import { useBooking } from '../../context/BookingContext';
 
 export default function ServiceDetailPage() {
@@ -30,15 +29,36 @@ export default function ServiceDetailPage() {
 
   const [openFaq, setOpenFaq] = useState(null);
   const scrollRef = useRef(null);
+  const [liveWorkers, setLiveWorkers] = useState([]);
 
-  let recommendedWorkers = getWorkersByService(service.id);
-  if (!recommendedWorkers || recommendedWorkers.length === 0) {
-    recommendedWorkers = WORKERS_DATA;
-  }
-  if (recommendedWorkers.length < 3) {
-    const fallback = WORKERS_DATA.filter((w) => w.serviceId !== service.id);
-    recommendedWorkers = [...recommendedWorkers, ...fallback].slice(0, 5);
-  }
+  React.useEffect(() => {
+    let isMounted = true;
+    fetchWorkers().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        setLiveWorkers(data);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const recommendedWorkers = React.useMemo(() => {
+    if (liveWorkers.length > 0) {
+      return liveWorkers.map((w) => ({
+        id: w._id,
+        _id: w._id,
+        fullName: w.fullName || 'Verified Artisan',
+        profession: w.primarySkill || w.primaryServiceCategory || 'Cooperative Artisan',
+        cooperative: w.societyId?.name || 'South Delhi Worker Cooperative',
+        rating: w.metrics?.averageRating || 4.9,
+        trustScore: w.metrics?.trustScore || 96,
+        jobsCompleted: w.metrics?.completedJobsCount || 24,
+        distanceKm: 1.2,
+        basePrice: w.basePrice || service.basePrice || 399,
+        avatarUrl: w.selfieUrl || w.avatarUrl || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400'
+      }));
+    }
+    return [];
+  }, [liveWorkers, service.basePrice]);
 
   const scrollCarousel = (direction) => {
     if (scrollRef.current) {

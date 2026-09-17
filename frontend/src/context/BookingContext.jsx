@@ -23,21 +23,22 @@ export const BookingProvider = ({ children }) => {
     try {
       const list = await apiFetchBookings();
       if (Array.isArray(list)) {
-        const active = list.find(b => ['REQUESTED', 'ALLOCATED', 'ACCEPTED', 'IN_TRANSIT', 'ARRIVED', 'IN_PROGRESS'].includes(b.status));
+        const active = list.find(b => ['PENDING', 'REQUESTED', 'ALLOCATED', 'ACCEPTED', 'IN_TRANSIT', 'ARRIVED', 'IN_PROGRESS'].includes(b.status));
         const prev = list.filter(b => ['COMPLETED', 'CANCELLED'].includes(b.status));
 
         if (active) {
           setActiveBooking({
             _id: active._id,
-            bookingId: active.bookingCode || active._id,
-            bookingCode: active.bookingCode || active._id,
+            bookingId: active.bookingCode || active.bookingId || active._id,
+            bookingCode: active.bookingCode || active.bookingId || active._id,
             status: active.status,
-            service: active.serviceId || SERVICES_DATA['electrical'],
-            worker: active.workerId || WORKERS_DATA[0],
+            service: active.serviceId || null,
+            worker: active.workerId || null,
             address: active.serviceAddress?.addressLine1 ? `${active.serviceAddress.addressLine1}, ${active.serviceAddress.city || 'Delhi'}` : bookingDetails.address,
             createdAt: new Date(active.createdAt).toLocaleTimeString(),
             bookingDate: new Date(active.createdAt).toLocaleDateString(),
-            details: bookingDetails
+            details: bookingDetails,
+            pricing: active.pricing
           });
         } else {
           setActiveBooking(null);
@@ -45,13 +46,13 @@ export const BookingProvider = ({ children }) => {
 
         setPreviousBookings(prev.map(p => ({
           _id: p._id,
-          bookingId: p.bookingCode || p._id,
-          bookingCode: p.bookingCode || p._id,
+          bookingId: p.bookingCode || p.bookingId || p._id,
+          bookingCode: p.bookingCode || p.bookingId || p._id,
           status: p.status,
-          service: p.serviceId || SERVICES_DATA['electrical'],
-          worker: p.workerId || WORKERS_DATA[0],
+          service: p.serviceId || null,
+          worker: p.workerId || null,
           completedDate: new Date(p.updatedAt || p.createdAt).toLocaleDateString(),
-          amountPaid: p.pricing?.totalAmount || 499,
+          amountPaid: p.pricing?.totalAmount || 0,
           ratingGiven: 5.0,
           paymentMethod: 'UPI (Escrow Protected)'
         })));
@@ -72,52 +73,41 @@ export const BookingProvider = ({ children }) => {
   };
 
   const createNewBooking = async (serviceId, workerId, extraDetails = {}) => {
-    const sId = serviceId || selectedServiceId || 'electrical';
-    const wId = workerId || selectedWorkerId || 'el-1';
+    const sId = serviceId || selectedServiceId;
+    const wId = workerId || selectedWorkerId;
     
-    const serviceObj = SERVICES_DATA[sId] || SERVICES_DATA['electrical'];
-    const workerObj = WORKERS_DATA.find((w) => w.id === wId || w._id === wId) || WORKERS_DATA[0];
-    
-    let backendBooking = null;
-    let backendOtp = null;
-
-    try {
-      const res = await apiCreateBooking({
-        serviceId: serviceObj._id || serviceObj.backendId || '6aa307c8abef287d06eb41fe',
-        workerId: workerObj._id || workerObj.backendId || '6aa307c9abef287d06eb4213',
-        notes: extraDetails.specialInstructions || bookingDetails.specialInstructions || 'Cooperative service booking',
-        serviceAddress: {
-          addressLine1: bookingDetails.address || 'B-42 Lajpat Nagar II',
-          city: 'New Delhi',
-          state: 'Delhi',
-          pincode: '110024'
-        }
-      });
-      if (res?.data?.booking) {
-        backendBooking = res.data.booking;
-        backendOtp = res.data.startOtp;
-      } else if (res?.booking) {
-        backendBooking = res.booking;
-        backendOtp = res.startOtp;
+    const payload = {
+      serviceId: sId,
+      workerId: wId,
+      notes: extraDetails.specialInstructions || bookingDetails.specialInstructions || 'Cooperative service booking',
+      serviceAddress: {
+        addressLine1: bookingDetails.address || 'B-42 Lajpat Nagar II',
+        city: 'New Delhi',
+        state: 'Delhi',
+        pincode: '110024'
       }
-    } catch (e) {
-      console.warn('[BookingContext] Backend booking creation notice:', e.message);
+    };
+
+    const res = await apiCreateBooking(payload);
+    const backendBooking = res?.data?.booking || res?.booking;
+
+    if (!backendBooking) {
+      throw new Error(res?.error?.message || 'Failed to create booking in database');
     }
 
-    const newId = backendBooking?.bookingCode || `BK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const bId = backendBooking.bookingCode || backendBooking.bookingId || backendBooking._id;
     const newBooking = {
-      _id: backendBooking?._id || null,
-      bookingId: newId,
-      bookingCode: newId,
-      startOtp: backendOtp || '1234',
-      status: backendBooking?.status || 'Assigned',
-      etaMinutes: 15,
-      worker: workerObj,
-      service: serviceObj,
+      _id: backendBooking._id,
+      bookingId: bId,
+      bookingCode: backendBooking.bookingCode,
+      status: backendBooking.status, // 'PENDING'
+      worker: backendBooking.workerId || null,
+      service: backendBooking.serviceId || null,
       details: { ...bookingDetails, ...extraDetails },
-      createdAt: new Date().toLocaleTimeString(),
-      address: bookingDetails.address || 'B-42 Lajpat Nagar II, New Delhi (110024)',
-      bookingDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      createdAt: new Date(backendBooking.createdAt || Date.now()).toLocaleTimeString(),
+      address: backendBooking.serviceAddress?.addressLine1 || bookingDetails.address,
+      bookingDate: new Date(backendBooking.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      pricing: backendBooking.pricing
     };
     
     setActiveBooking(newBooking);

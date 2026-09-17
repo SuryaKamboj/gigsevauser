@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -15,10 +15,10 @@ import {
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import { SERVICES_DATA } from '../../data/servicesData';
-import { getWorkerById } from '../../data/workersData';
 import { useBooking } from '../../context/BookingContext';
 import { useAuth } from '../../context/AuthContext';
-
+import { fetchWorkerById } from '../../services/workersApi';
+import { fetchServiceById } from '../../services/servicesApi';
 
 export default function BookingPage() {
   const navigate = useNavigate();
@@ -27,16 +27,39 @@ export default function BookingPage() {
   const { requireAuth } = useAuth();
 
   const serviceId = searchParams.get('service') || 'electrical';
-  const workerId = searchParams.get('workerId') || 'el-1';
+  const workerId = searchParams.get('workerId') || 'WK-DEL-001';
 
-  const service = SERVICES_DATA[serviceId] || SERVICES_DATA['electrical'];
-  const worker = getWorkerById(workerId);
+  const [service, setService] = useState(() => SERVICES_DATA[serviceId] || null);
+  const [worker, setWorker] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (workerId) {
+      fetchWorkerById(workerId).then((res) => {
+        const w = res?.data || res;
+        if (isMounted && w && (w._id || w.fullName)) setWorker(w);
+      }).catch(() => {});
+    }
+    if (serviceId) {
+      fetchServiceById(serviceId).then((res) => {
+        const s = res?.data || res;
+        if (isMounted && s && (s._id || s.name)) setService(s);
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [workerId, serviceId]);
 
   const [address, setAddress] = useState(bookingDetails.address);
   const [date, setDate] = useState(bookingDetails.date);
   const [timeSlot, setTimeSlot] = useState(bookingDetails.timeSlot);
   const [specialInstructions, setSpecialInstructions] = useState(bookingDetails.specialInstructions);
   const [previewImage, setPreviewImage] = useState(bookingDetails.uploadedImage);
+
+  const resolvedWorkerName = worker?.fullName || 'Verified Cooperative Artisan';
+  const resolvedWorkerAvatar = worker?.avatarUrl || worker?.selfieUrl || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400';
+  const resolvedWorkerCoop = worker?.societyId?.name || worker?.cooperative || 'South Delhi Worker Cooperative Society';
+  const resolvedWorkerPrice = worker?.basePrice || service?.baseLaborPrice || 399;
+  const resolvedServiceName = service?.name || 'Home Maintenance Service';
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -56,9 +79,11 @@ export default function BookingPage() {
         specialInstructions,
         uploadedImage: previewImage
       });
-      setSelectedServiceId(serviceId);
-      setSelectedWorkerId(workerId);
-      navigate(`/payment?service=${serviceId}&workerId=${workerId}`);
+      const realServiceId = service?._id || serviceId;
+      const realWorkerId = worker?._id || workerId;
+      setSelectedServiceId(realServiceId);
+      setSelectedWorkerId(realWorkerId);
+      navigate(`/payment?service=${realServiceId}&workerId=${realWorkerId}`);
     });
   };
 
@@ -93,15 +118,15 @@ export default function BookingPage() {
         {/* Service & Worker Summary Pill */}
         <div className="bg-[#FCFBF8] border border-[#E8E2D8] rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3 shadow-xs">
           <div className="flex items-center gap-3">
-            <img src={worker.avatarUrl} alt={worker.fullName} className="w-12 h-12 rounded-xl object-cover border border-[#E8E2D8]" />
+            <img src={resolvedWorkerAvatar} alt={resolvedWorkerName} className="w-12 h-12 rounded-xl object-cover border border-[#E8E2D8]" />
             <div>
-              <h3 className="text-sm font-bold text-[#17233A]">{service.name}</h3>
-              <p className="text-xs text-[#6B7280]">Assigned Worker: <strong>{worker.fullName}</strong> ({worker.cooperative})</p>
+              <h3 className="text-sm font-bold text-[#17233A]">{resolvedServiceName}</h3>
+              <p className="text-xs text-[#6B7280]">Assigned Worker: <strong>{resolvedWorkerName}</strong> ({resolvedWorkerCoop})</p>
             </div>
           </div>
           <div className="text-right">
             <span className="text-xs text-[#6B7280] block">Service Fee</span>
-            <span className="text-base font-extrabold text-[#17233A]">₹{worker.basePrice}</span>
+            <span className="text-base font-extrabold text-[#17233A]">₹{resolvedWorkerPrice}</span>
           </div>
         </div>
 

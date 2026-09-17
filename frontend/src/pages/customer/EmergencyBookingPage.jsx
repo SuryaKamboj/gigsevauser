@@ -13,28 +13,57 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
-import { WORKERS_DATA } from '../../data/workersData';
+import { fetchWorkers } from '../../services/workersApi';
 import { SERVICES_DATA } from '../../data/servicesData';
 import { useBooking } from '../../context/BookingContext';
 
 export default function EmergencyBookingPage() {
   const navigate = useNavigate();
   const { setSelectedServiceId, setSelectedWorkerId, createNewBooking } = useBooking();
-  const [selectedUrgentWorker, setSelectedUrgentWorker] = useState(WORKERS_DATA[0]);
+  const [liveWorkers, setLiveWorkers] = useState([]);
+  const [selectedUrgentWorker, setSelectedUrgentWorker] = useState(null);
 
-  // Available immediate dispatch workers (distance < 2km & availableNow)
-  const emergencyWorkers = WORKERS_DATA.filter((w) => w.availableNow);
+  React.useEffect(() => {
+    let isMounted = true;
+    fetchWorkers().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        setLiveWorkers(data);
+        setSelectedUrgentWorker(data[0]);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
-  const handleInstantDispatch = (worker) => {
-    setSelectedWorkerId(worker.id);
-    setSelectedServiceId(worker.serviceId);
+  const emergencyWorkers = liveWorkers.map((w) => ({
+    id: w._id,
+    _id: w._id,
+    serviceId: (w.primaryServiceCategory || 'ELECTRICAL').toLowerCase(),
+    fullName: w.fullName || 'Emergency Artisan',
+    profession: w.primarySkill || w.primaryServiceCategory || 'Emergency Specialist',
+    distanceKm: 1.2,
+    rating: w.metrics?.averageRating || 4.9,
+    basePrice: w.basePrice || 499,
+    cooperative: w.societyId?.name || 'South Delhi Cooperative',
+    avatarUrl: w.selfieUrl || w.avatarUrl || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400'
+  }));
+
+  const handleInstantDispatch = async (worker) => {
+    const wId = worker?._id || worker?.id;
+    const sId = worker?.serviceId || 'electrical';
+    setSelectedWorkerId(wId);
+    setSelectedServiceId(sId);
     
-    const newBooking = createNewBooking(worker.serviceId, worker.id, {
-      isEmergency: true,
-      timeSlot: '15-Min Express Dispatch'
-    });
+    try {
+      const newBooking = await createNewBooking(sId, wId, {
+        isEmergency: true,
+        timeSlot: '15-Min Express Dispatch'
+      });
 
-    navigate(`/tracking/${newBooking.bookingId}`);
+      const trackId = newBooking?.bookingCode || newBooking?.bookingId || newBooking?._id;
+      navigate(`/tracking/${trackId}`);
+    } catch (err) {
+      alert(err.message || 'Unable to initiate emergency dispatch. Please try again.');
+    }
   };
 
   return (

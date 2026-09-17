@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -14,8 +14,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
-import { SERVICES_DATA } from '../../data/servicesData';
-import { getWorkerById } from '../../data/workersData';
+import { fetchWorkerById } from '../../services/workersApi';
+import { fetchServiceById } from '../../services/servicesApi';
 import { useBooking } from '../../context/BookingContext';
 
 export default function PaymentPage() {
@@ -24,16 +24,33 @@ export default function PaymentPage() {
   const { bookingDetails, createNewBooking } = useBooking();
 
   const serviceId = searchParams.get('service') || 'electrical';
-  const workerId = searchParams.get('workerId') || 'el-1';
+  const workerId = searchParams.get('workerId') || 'WK-DEL-001';
 
-  const service = SERVICES_DATA[serviceId] || SERVICES_DATA['electrical'];
-  const worker = getWorkerById(workerId) || WORKERS_DATA[0];
+  const [service, setService] = useState(null);
+  const [worker, setWorker] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (workerId) {
+      fetchWorkerById(workerId).then((res) => {
+        const w = res?.data || res;
+        if (isMounted && w && (w._id || w.fullName)) setWorker(w);
+      }).catch(() => {});
+    }
+    if (serviceId) {
+      fetchServiceById(serviceId).then((res) => {
+        const s = res?.data || res;
+        if (isMounted && s && (s._id || s.name)) setService(s);
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [workerId, serviceId]);
 
   const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' | 'card' | 'wallet' | 'cash'
   const [upiId, setUpiId] = useState('surya@okicici');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const basePrice = worker?.basePrice || 420;
+  const basePrice = worker?.basePrice || service?.baseLaborPrice || 420;
   const platformFee = 25;
   const taxes = Math.round(basePrice * 0.05);
   const totalPrice = basePrice + platformFee + taxes;
@@ -44,16 +61,19 @@ export default function PaymentPage() {
     setIsProcessing(true);
 
     try {
-      const newBooking = await createNewBooking(serviceId, workerId, {
+      const realServiceId = service?._id || serviceId;
+      const realWorkerId = worker?._id || workerId;
+
+      const newBooking = await createNewBooking(realServiceId, realWorkerId, {
         paymentMethod,
         totalPaid: totalPrice
       });
 
-      const trackingId = newBooking?.bookingId || newBooking?.bookingCode || 'GS-202609-87459';
+      const trackingId = newBooking?.bookingCode || newBooking?.bookingId || newBooking?._id;
       navigate(`/tracking/${trackingId}`);
     } catch (err) {
       console.error('Payment error:', err);
-      navigate('/requests');
+      alert(err.message || 'Payment or booking creation failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -208,11 +228,11 @@ export default function PaymentPage() {
 
             <div className="space-y-2 text-xs text-[#6B7280]">
               <div className="flex justify-between">
-                <span>Service ({service.name})</span>
+                <span>Service ({service?.name || 'Home Maintenance Service'})</span>
                 <span className="font-bold text-[#17233A]">₹{basePrice}</span>
               </div>
               <div className="flex justify-between">
-                <span>Worker ({worker.fullName})</span>
+                <span>Worker ({worker?.fullName || 'Assigned Artisan'})</span>
                 <span className="text-[#A66666] font-bold">Assigned</span>
               </div>
               <div className="flex justify-between">
