@@ -14,7 +14,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
-import { SERVICES_DATA } from '../../data/servicesData';
+import { SERVICES_DATA, getServiceById } from '../../data/servicesData';
 import { useBooking } from '../../context/BookingContext';
 import { useAuth } from '../../context/AuthContext';
 import { fetchWorkerById } from '../../services/workersApi';
@@ -29,7 +29,7 @@ export default function BookingPage() {
   const serviceId = searchParams.get('service') || 'electrical';
   const workerId = searchParams.get('workerId') || 'WK-DEL-001';
 
-  const [service, setService] = useState(() => SERVICES_DATA[serviceId] || null);
+  const [service, setService] = useState(() => getServiceById(serviceId));
   const [worker, setWorker] = useState(null);
 
   useEffect(() => {

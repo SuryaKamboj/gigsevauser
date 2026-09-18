@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faLocationDot,
   faChevronDown,
-  faBell,
   faBars,
   faXmark,
   faUser,
@@ -152,19 +151,8 @@ export default function CustomerHeader({
           })}
         </nav>
 
-        {/* Right Section: Notifications, Member Dropdown Menu / Sign In & Mobile Hamburger */}
+        {/* Right Section: Member Dropdown Menu / Sign In & Mobile Hamburger */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-
-          <button
-            type="button"
-            className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#F8F6F2] hover:bg-[#E8E2D8]/50 border border-[#E8E2D8] text-[#17233A] flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs"
-            aria-label="Notifications"
-          >
-            <FontAwesomeIcon icon={faBell} className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#17233A]" />
-            {hasUnreadNotifications && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#A66666] ring-2 ring-white animate-pulse" />
-            )}
-          </button>
 
           {/* Member Dropdown Menu */}
           {isAuthenticated ? (

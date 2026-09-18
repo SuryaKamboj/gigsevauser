@@ -13,7 +13,7 @@ import {
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import { getWorkersByService, WORKERS_DATA } from '../../data/workersData';
-import { SERVICES_DATA } from '../../data/servicesData';
+import { SERVICES_DATA, getServiceById } from '../../data/servicesData';
 import { useBooking } from '../../context/BookingContext';
 import { fetchWorkers } from '../../services/workersApi';
 
@@ -28,7 +28,7 @@ export default function ServiceListingPage() {
 
   const isGlobalFindWorkers = !serviceId;
   const currentServiceId = serviceId || 'electrical';
-  const service = SERVICES_DATA[currentServiceId] || SERVICES_DATA['electrical'];
+  const service = getServiceById(currentServiceId);
 
   // Backend workers state
   const [liveWorkers, setLiveWorkers] = useState([]);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -29,6 +29,7 @@ import HomeCooperativeImpact from '../../components/customer/HomeCooperativeImpa
 import AiDiagnoseCard from '../../components/customer/AiDiagnoseCard';
 import InnovationCarousel from '../../components/customer/InnovationCarousel';
 import { useAuth } from '../../context/AuthContext';
+import { SERVICES_DATA } from '../../data/servicesData';
 
 const REVIEW_CATEGORY_COLORS = {
   'Electrical Repair': { bg: '#FDF2F2', border: '#F8D7D7', star: '#A66666', pillBg: '#F9C6C6', text: '#17233A' },
@@ -126,63 +127,15 @@ export default function CustomerHomePage() {
     setReviewPage((prev) => (prev + 1) % totalReviewPages);
   };
 
-  const serviceCategories = [
-    {
-      id: 'electrical',
-      name: 'Electrical Repair',
-      basePrice: 420,
-      icon: faBolt,
-      workersCount: '140+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'plumbing',
-      name: 'Plumbing Service',
-      basePrice: 480,
-      icon: faFaucet,
-      workersCount: '115+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'carpentry',
-      name: 'Carpentry Work',
-      basePrice: 540,
-      icon: faHammer,
-      workersCount: '88+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=800&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'cleaning',
-      name: 'Cleaning & Hygiene',
-      basePrice: 360,
-      icon: faBroom,
-      workersCount: '160+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'appliance-repair',
-      name: 'Appliance Repair',
-      basePrice: 600,
-      icon: faScrewdriverWrench,
-      workersCount: '95+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'eldercare',
-      name: 'Elder Care Service',
-      basePrice: 720,
-      icon: faHeartPulse,
-      workersCount: '60+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=800&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'wall-painting',
-      name: 'Wall Painting',
-      basePrice: 960,
-      icon: faPaintRoller,
-      workersCount: '75+ Professionals',
-      bgImg: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=800&auto=format&fit=crop&q=80'
-    },
+  const serviceCategories = useMemo(() => [
+    ...Object.values(SERVICES_DATA).map((srv) => ({
+      id: srv.id,
+      name: srv.name,
+      basePrice: srv.basePrice,
+      icon: srv.icon,
+      workersCount: srv.workersCount,
+      bgImg: srv.bgImg
+    })),
     {
       id: 'all-catalog',
       name: 'All Services Catalog',
@@ -191,7 +144,7 @@ export default function CustomerHomePage() {
       workersCount: '7,700+ Professionals',
       bgImg: ''
     }
-  ];
+  ], []);
 
   return (
     <div className="min-h-screen bg-[#F8F6F2] text-[#17233A] relative pb-20 md:pb-12 font-sans selection:bg-[#A66666] selection:text-white">
@@ -390,11 +343,11 @@ export default function CustomerHomePage() {
         {/* 2.5. KAIROVA UNIQUE INNOVATION CAROUSEL */}
         <InnovationCarousel />
 
-        {/* 3. EXPLORE SERVICES CARDS SECTION */}
+        {/* 3. EXPLORE CATEGORIES / SERVICES CARDS SECTION */}
         <section id="services" className="space-y-4 sm:space-y-6">
           <div>
             <h2 className="text-xl sm:text-3xl font-extrabold font-display text-[#17233A] tracking-tight">
-              Explore Services
+              Explore Categories
             </h2>
             <p className="text-xs sm:text-sm text-[#6B7280] font-normal mt-0.5 sm:mt-1">
               Top requested household trades fulfilled by verified local cooperatives

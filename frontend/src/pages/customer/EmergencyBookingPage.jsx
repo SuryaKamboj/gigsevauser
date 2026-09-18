@@ -14,7 +14,7 @@ import {
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import { fetchWorkers } from '../../services/workersApi';
-import { SERVICES_DATA } from '../../data/servicesData';
+import { SERVICES_DATA, getServiceById } from '../../data/servicesData';
 import { useBooking } from '../../context/BookingContext';
 
 export default function EmergencyBookingPage() {
@@ -113,7 +113,7 @@ export default function EmergencyBookingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {emergencyWorkers.map((worker) => {
-              const service = SERVICES_DATA[worker.serviceId] || SERVICES_DATA['electrical'];
+              const service = getServiceById(worker.serviceId);
 
               return (
                 <div

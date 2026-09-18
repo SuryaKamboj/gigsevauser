@@ -24,7 +24,7 @@ import {
 import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import { getWorkerById } from '../../data/workersData';
-import { SERVICES_DATA } from '../../data/servicesData';
+import { SERVICES_DATA, getServiceById } from '../../data/servicesData';
 import { useBooking } from '../../context/BookingContext';
 import { useAuth } from '../../context/AuthContext';
 import { fetchWorkerById } from '../../services/workersApi';
@@ -92,7 +92,7 @@ export default function WorkerProfilePage() {
         .catch((err) => console.warn('Worker profile notice:', err));
     }
   }, [workerId]);
-  const service = SERVICES_DATA[worker.serviceId] || SERVICES_DATA['electrical'];
+  const service = getServiceById(worker?.serviceId);
 
   const [activeModal, setActiveModal] = useState(null); // 'chat' | 'call' | null
   const [selectedTag, setSelectedTag] = useState('All');

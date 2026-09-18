@@ -18,14 +18,42 @@ import CustomerHeader from '../../components/customer/CustomerHeader';
 import BottomNavigation from '../../components/customer/BottomNavigation';
 import CompactTrustStrip from '../../components/customer/CompactTrustStrip';
 import { fetchWorkers } from '../../services/workersApi';
+import { fetchServiceById } from '../../services/servicesApi';
 import { useBooking } from '../../context/BookingContext';
+import { SERVICES_DATA, getServiceById } from '../../data/servicesData';
 
 export default function ServiceDetailPage() {
   const { serviceId } = useParams();
   const navigate = useNavigate();
   const { setSelectedServiceId } = useBooking();
 
-  const service = SERVICES_DATA[serviceId] || SERVICES_DATA['electrical'];
+  const canonicalService = React.useMemo(() => getServiceById(serviceId), [serviceId]);
+  const [service, setService] = useState(canonicalService);
+
+  React.useEffect(() => {
+    setService(getServiceById(serviceId));
+  }, [serviceId]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (serviceId) {
+      fetchServiceById(serviceId).then((res) => {
+        const s = res?.data || res;
+        if (isMounted && s && (s._id || s.name)) {
+          setService((prev) => ({
+            ...prev,
+            ...s,
+            id: s.slug || s._id || prev?.id,
+            name: s.name || prev?.name,
+            basePrice: s.basePrice ?? prev?.basePrice,
+            description: s.description || prev?.description,
+            includedTasks: Array.isArray(s.includedTasks) && s.includedTasks.length > 0 ? s.includedTasks : prev?.includedTasks || []
+          }));
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [serviceId]);
 
   const [openFaq, setOpenFaq] = useState(null);
   const scrollRef = useRef(null);
@@ -53,12 +81,12 @@ export default function ServiceDetailPage() {
         trustScore: w.metrics?.trustScore || 96,
         jobsCompleted: w.metrics?.completedJobsCount || 24,
         distanceKm: 1.2,
-        basePrice: w.basePrice || service.basePrice || 399,
+        basePrice: w.basePrice || service?.basePrice || 399,
         avatarUrl: w.selfieUrl || w.avatarUrl || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400'
       }));
     }
     return [];
-  }, [liveWorkers, service.basePrice]);
+  }, [liveWorkers, service?.basePrice]);
 
   const scrollCarousel = (direction) => {
     if (scrollRef.current) {
@@ -71,23 +99,23 @@ export default function ServiceDetailPage() {
   };
 
   const handleBookService = () => {
-    setSelectedServiceId(service.id);
-    navigate(`/booking?service=${service.id}`);
+    setSelectedServiceId(service?.id || 'electrical');
+    navigate(`/booking?service=${service?.id || 'electrical'}`);
   };
 
   const handleViewWorkers = () => {
-    setSelectedServiceId(service.id);
-    navigate(`/services/${service.id}/workers`);
+    setSelectedServiceId(service?.id || 'electrical');
+    navigate(`/services/${service?.id || 'electrical'}/workers`);
   };
 
   const faqs = [
     {
-      q: `What is included in ${service.name}?`,
+      q: `What is included in ${service?.name || 'this service'}?`,
       a: `Our verified cooperative artisan carries out a complete initial diagnostic check, minor part repairs, load/safety verification, and clean-up. Spare parts are provided at fixed guild rate-card prices.`
     },
     {
       q: 'How does pricing work?',
-      a: `You pay an upfront base inspection fee of ₹${service.basePrice}. If additional spare parts or heavy repairs are needed, our artisan provides an itemized quote based on standard cooperative rate cards before starting.`
+      a: `You pay an upfront base inspection fee of ₹${service?.basePrice || 420}. If additional spare parts or heavy repairs are needed, our artisan provides an itemized quote based on standard cooperative rate cards before starting.`
     },
     {
       q: 'What if I am not satisfied with the repair?',
@@ -318,7 +346,7 @@ export default function ServiceDetailPage() {
             What is Included in {service.name}?
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {service.includedTasks.map((task, idx) => (
+            {(service?.includedTasks || []).map((task, idx) => (
               <div key={idx} className="flex items-start gap-3 text-xs sm:text-sm text-[#17233A] font-medium bg-[#F8F6F2] border border-[#E8E2D8] p-3.5 rounded-xl">
                 <FontAwesomeIcon icon={faCheckCircle} className="w-4 h-4 text-[#A66666] shrink-0 mt-0.5" />
                 <span>{task}</span>

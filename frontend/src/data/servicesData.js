@@ -201,3 +201,56 @@ export const SERVICES_DATA = {
     ]
   }
 };
+
+// Non-enumerable aliases for slug/ID reconciliation and backward compatibility
+// Using non-enumerable properties ensures Object.values(SERVICES_DATA) and Object.keys(SERVICES_DATA)
+// only return canonical items without duplicates.
+const ALIASES = {
+  'painting': 'wall-painting',
+  'cat-painting': 'wall-painting',
+  'cat-electrical': 'electrical',
+  'cat-plumbing': 'plumbing',
+  'cat-carpentry': 'carpentry',
+  'cat-cleaning': 'cleaning',
+  'cat-appliance': 'appliance-repair',
+  'appliance': 'appliance-repair',
+  'cat-eldercare': 'eldercare'
+};
+
+Object.entries(ALIASES).forEach(([aliasKey, targetKey]) => {
+  if (SERVICES_DATA[targetKey] && !Object.prototype.hasOwnProperty.call(SERVICES_DATA, aliasKey)) {
+    Object.defineProperty(SERVICES_DATA, aliasKey, {
+      value: SERVICES_DATA[targetKey],
+      enumerable: false,
+      writable: true,
+      configurable: true
+    });
+  }
+});
+
+/**
+ * Resolves a service by id, slug, catId, or fuzzy trade name.
+ * Guarantees returning a valid canonical service object from SERVICES_DATA.
+ */
+export const getServiceById = (id) => {
+  if (!id) return SERVICES_DATA['electrical'];
+  if (SERVICES_DATA[id]) return SERVICES_DATA[id];
+
+  const lower = String(id).toLowerCase().trim();
+  if (SERVICES_DATA[lower]) return SERVICES_DATA[lower];
+
+  const found = Object.values(SERVICES_DATA).find(
+    (s) => s && (s.id === id || s.id === lower || s.catId === id || s.catId === lower || s.backendId === id || s._id === id)
+  );
+  if (found) return found;
+
+  if (lower.includes('electr')) return SERVICES_DATA['electrical'];
+  if (lower.includes('plum')) return SERVICES_DATA['plumbing'];
+  if (lower.includes('carp')) return SERVICES_DATA['carpentry'];
+  if (lower.includes('clean')) return SERVICES_DATA['cleaning'];
+  if (lower.includes('appliance') || lower.includes('ac')) return SERVICES_DATA['appliance-repair'];
+  if (lower.includes('elder')) return SERVICES_DATA['eldercare'];
+  if (lower.includes('paint')) return SERVICES_DATA['wall-painting'];
+
+  return SERVICES_DATA['electrical'];
+};
