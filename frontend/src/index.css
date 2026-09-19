@@ -22,3 +22,13 @@ body {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Google Places Autocomplete dropdown z-index above modals */
+.pac-container {
+  z-index: 1000002 !important;
+  border-radius: 16px !important;
+  border: 1px solid #E8E2D8 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  font-family: inherit !important;
+  margin-top: 4px !important;
+}
+

@@ -50,8 +50,8 @@ export const WORKERS_DATA = [
         date: '14 Aug 2026',
         rating: 5.0,
         location: 'Lajpat Nagar II, New Delhi',
-        beforeImg: 'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=500&auto=format&fit=crop&q=80',
-        afterImg: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=500&auto=format&fit=crop&q=80'
+        beforeImg: '/uploads/proof-of-work/before-switchboard-overhaul.png',
+        afterImg: '/uploads/proof-of-work/after-switchboard-overhaul.png'
       }
     ],
 

@@ -14,11 +14,16 @@ import {
   faRightFromBracket,
   faPenToSquare,
   faMapPin,
-  faEnvelope
+  faEnvelope,
+  faLocationCrosshairs,
+  faMapLocationDot,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 
 import { useBooking } from '../../context/BookingContext';
 import { useAuth } from '../../context/AuthContext';
+import ChooseLocationModal from './ChooseLocationModal';
+import { loadGoogleMaps } from '../../services/googleMapsService';
 
 export default function CustomerHeader({
   userLocation = {
@@ -29,13 +34,113 @@ export default function CustomerHeader({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { activeBooking } = useBooking();
+  const { activeBooking, bookingDetails, updateBookingDetails } = useBooking();
   const { isAuthenticated, user, setIsAuthModalOpen, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
+  // Location selector state
+  const [selectedLocation, setSelectedLocation] = useState(() => {
+    const saved = localStorage.getItem('gigseva_selected_location');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    const defaultAddr = user?.address
+      ? `${user.address}, ${user.city || 'New Delhi'}`
+      : bookingDetails?.address || userLocation.address;
+    return {
+      address: defaultAddr,
+      lat: 28.5677,
+      lng: 77.2433
+    };
+  });
+
+  const [locationMenuOpen, setLocationMenuOpen] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
   const dropdownRef = useRef(null);
+  const locationMenuRef = useRef(null);
+
+  // Close location menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (locationMenuRef.current && !locationMenuRef.current.contains(event.target)) {
+        setLocationMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const applyLocationUpdate = (address, lat, lng) => {
+    const locObj = { address, lat: lat || 28.5677, lng: lng || 77.2433 };
+    setSelectedLocation(locObj);
+    localStorage.setItem('gigseva_selected_location', JSON.stringify(locObj));
+    if (updateBookingDetails) {
+      updateBookingDetails({ address });
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    setIsLocating(true);
+    if (!navigator.geolocation) {
+      setIsLocating(false);
+      setLocationMenuOpen(false);
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        if (window.google?.maps?.Geocoder) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            setIsLocating(false);
+            setLocationMenuOpen(false);
+            if (status === 'OK' && results && results[0]) {
+              applyLocationUpdate(results[0].formatted_address, lat, lng);
+            } else {
+              applyLocationUpdate(`Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`, lat, lng);
+            }
+          });
+          return;
+        }
+
+        loadGoogleMaps()
+          .then((google) => {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+              setIsLocating(false);
+              setLocationMenuOpen(false);
+              if (status === 'OK' && results && results[0]) {
+                applyLocationUpdate(results[0].formatted_address, lat, lng);
+              } else {
+                applyLocationUpdate(`Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`, lat, lng);
+              }
+            });
+          })
+          .catch(() => {
+            setIsLocating(false);
+            setLocationMenuOpen(false);
+            applyLocationUpdate('Lajpat Nagar II, New Delhi', lat, lng);
+          });
+      },
+      (err) => {
+        setIsLocating(false);
+        setLocationMenuOpen(false);
+        console.warn('Geolocation notice:', err);
+        applyLocationUpdate('Lajpat Nagar II, New Delhi', 28.5677, 77.2433);
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
 
   // Lock background page scroll when profile modal is open
   useEffect(() => {
@@ -108,19 +213,87 @@ export default function CustomerHeader({
           </Link>
 
           {/* Location Selector */}
-          <button
-            type="button"
-            className="flex items-center gap-1.5 text-left group focus:outline-none rounded-full px-2.5 sm:px-3.5 py-1 transition-all bg-[#F8F6F2] hover:bg-[#E8E2D8]/50 border border-[#E8E2D8] max-w-[110px] min-[380px]:max-w-[150px] sm:max-w-[240px] min-w-0 shadow-2xs cursor-pointer"
-            aria-label="Select Location"
-          >
-            <FontAwesomeIcon icon={faLocationDot} className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#A66666] shrink-0" />
-            <div className="flex items-center gap-0.5 min-w-0 flex-1">
-              <p className="text-[10px] sm:text-[11px] font-bold text-[#17233A] truncate">
-                {user?.address ? `${user.address}, ${user.city || ''}` : userLocation.address}
-              </p>
-              <FontAwesomeIcon icon={faChevronDown} className="w-2 h-2 text-[#6B7280] shrink-0 hidden min-[360px]:inline-block" />
-            </div>
-          </button>
+          <div className="relative shrink-0" ref={locationMenuRef}>
+            <button
+              type="button"
+              onClick={() => setLocationMenuOpen(!locationMenuOpen)}
+              className="flex items-center gap-1.5 text-left group focus:outline-none rounded-full px-2.5 sm:px-3.5 py-1 transition-all bg-[#F8F6F2] hover:bg-[#E8E2D8]/50 border border-[#E8E2D8] max-w-[120px] min-[380px]:max-w-[160px] sm:max-w-[260px] min-w-0 shadow-2xs cursor-pointer"
+              aria-expanded={locationMenuOpen}
+              aria-label="Select Location"
+            >
+              <FontAwesomeIcon icon={faLocationDot} className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#A66666] shrink-0" />
+              <div className="flex items-center gap-0.5 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold text-[#17233A] truncate">
+                  {selectedLocation.address}
+                </p>
+                <FontAwesomeIcon
+                  icon={faChevronDown}
+                  className={`w-2 h-2 text-[#6B7280] shrink-0 hidden min-[360px]:inline-block transition-transform duration-200 ${
+                    locationMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Location Options Dropdown */}
+            {locationMenuOpen && (
+              <div className="absolute left-0 mt-2 w-72 sm:w-80 rounded-2xl bg-[#FCFBF8] border border-[#E8E2D8] shadow-xl p-2 z-[1000] text-xs font-semibold text-[#17233A] animate-fadeIn space-y-1">
+                <div className="px-3 py-2 border-b border-[#E8E2D8] mb-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#6B7280]">
+                    Current Service Location
+                  </p>
+                  <p className="text-xs font-bold text-[#17233A] truncate mt-0.5">
+                    {selectedLocation.address}
+                  </p>
+                </div>
+
+                {/* 1. 📍 Current Location */}
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={isLocating}
+                  className="w-full px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-[#F8F6F2] text-[#17233A] text-left transition-all cursor-pointer group"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-[#A66666]/10 text-[#A66666] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <FontAwesomeIcon
+                      icon={isLocating ? faSpinner : faLocationCrosshairs}
+                      className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-extrabold text-xs block text-[#17233A]">
+                      {isLocating ? 'Detecting Location...' : '📍 Current Location'}
+                    </span>
+                    <span className="text-[11px] text-[#6B7280] font-normal block truncate">
+                      Use device GPS location
+                    </span>
+                  </div>
+                </button>
+
+                {/* 2. 🗺️ Choose Location */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocationMenuOpen(false);
+                    setIsMapModalOpen(true);
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-[#F8F6F2] text-[#17233A] text-left transition-all cursor-pointer group"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-[#17233A]/10 text-[#17233A] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <FontAwesomeIcon icon={faMapLocationDot} className="w-4 h-4 text-[#17233A]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-extrabold text-xs block text-[#17233A]">
+                      🗺️ Choose Location
+                    </span>
+                    <span className="text-[11px] text-[#6B7280] font-normal block truncate">
+                      Search & select on Google Maps
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Center Section: Navigation Links (Desktop & Tablet) */}
@@ -362,6 +535,13 @@ export default function CustomerHeader({
         </div>,
         document.body
       )}
+      {/* Choose Location on Google Maps Modal */}
+      <ChooseLocationModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        currentLocation={selectedLocation}
+        onSelectLocation={(locObj) => applyLocationUpdate(locObj.address, locObj.lat, locObj.lng)}
+      />
     </header>
   );
 }

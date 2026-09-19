@@ -85,7 +85,8 @@ export default function WorkerProfilePage() {
               jobsCompleted: w.metrics?.completedJobsCount || prev.jobsCompleted || 18,
               rating: w.metrics?.averageRating || prev.rating || 4.9,
               trustScore: w.metrics?.trustScore || prev.trustScore || 96.0,
-              basePrice: rawCat.includes('PLUMB') ? 350 : 420
+              basePrice: rawCat.includes('PLUMB') ? 350 : 420,
+              workGallery: (Array.isArray(w.workGallery) && w.workGallery.length > 0) ? w.workGallery : prev.workGallery
             }));
           }
         })
@@ -115,8 +116,8 @@ export default function WorkerProfilePage() {
       date: '14 Aug 2026',
       rating: 5.0,
       location: 'Lajpat Nagar II, New Delhi',
-      beforeImg: 'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=500&auto=format&fit=crop&q=80',
-      afterImg: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=500&auto=format&fit=crop&q=80'
+      beforeImg: '/uploads/proof-of-work/before-switchboard-overhaul.png',
+      afterImg: '/uploads/proof-of-work/after-switchboard-overhaul.png'
     },
     {
       id: 'wg-2',
